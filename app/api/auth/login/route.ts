@@ -1,6 +1,8 @@
 import { NextResponse, NextRequest } from "next/server";
 import { scalekit } from "@/auth/scalekit-client";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const redirectUri = `${url.origin}/api/auth/callback`;

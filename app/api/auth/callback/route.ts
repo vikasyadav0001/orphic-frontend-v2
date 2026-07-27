@@ -2,6 +2,8 @@ import { NextResponse, NextRequest } from "next/server";
 import { scalekit } from "@/auth/scalekit-client";
 import { cookies } from "next/headers";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
