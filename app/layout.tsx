@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthGuard } from "@/components/auth-guard";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,7 +26,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col overflow-x-hidden max-w-full bg-background text-foreground">
-        <TooltipProvider>{children}</TooltipProvider>
+        <TooltipProvider>
+          <AuthGuard>{children}</AuthGuard>
+        </TooltipProvider>
       </body>
     </html>
   );

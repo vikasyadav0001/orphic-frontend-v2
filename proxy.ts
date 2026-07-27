@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Allow public authentication endpoints and Next.js internal assets
+  // 1. Allow public landing page, auth endpoints, and static assets
   if (
+    pathname === "/" ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/_next") ||
@@ -33,7 +34,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Apply middleware to all routes except public static files and api/auth
+     * Apply proxy to all routes except public static files and api/auth
      */
     "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
   ],
