@@ -18,7 +18,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { getConversations, deleteConversation } from "@/lib/api";
+import { getConversations, deleteConversation, getToken } from "@/lib/api";
 
 export const ThreadList: FC = () => {
   return null; // Not used directly in sidebar, sidebar uses parts
@@ -88,14 +88,19 @@ export const ThreadListItems: FC<{ className?: string; inert?: boolean; "aria-hi
   const activeThreadId = params.threadId as string | undefined;
 
   const fetchThreads = async () => {
+    const token = getToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const res = await getConversations();
-      if (res.ok) {
+      if (res && res.ok) {
         const data = await res.json();
-        setThreads(data);
+        setThreads(Array.isArray(data) ? data : []);
       }
     } catch (e) {
-      console.error("Failed to load threads", e);
+      console.warn("Failed to load threads", e);
     } finally {
       setIsLoading(false);
     }

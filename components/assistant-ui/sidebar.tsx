@@ -1,13 +1,13 @@
 "use client";
 
-import { FC } from "react";
+import { FC, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { FanIcon, LogOutIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlugIcon, WorkflowIcon } from "lucide-react";
+import { FanIcon, LogInIcon, LogOutIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlugIcon, WorkflowIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThreadListItems, ThreadListRoot } from "@/components/assistant-ui/thread-list";
 import { useSidebarState } from "@/lib/use-sidebar-state";
-import { clearAuthToken } from "@/lib/api";
+import { clearAuthToken, getToken } from "@/lib/api";
 
 const Logo: FC<{ collapsed?: boolean }> = ({ collapsed }) => {
   return (
@@ -66,6 +66,12 @@ export const Sidebar: FC<{ collapsed?: boolean }> = ({ collapsed: collapsedProp 
   // If a parent passes `collapsed` explicitly (rare — for external control), prefer that.
   // Otherwise drive from the shared state.
   const collapsed = collapsedProp ?? stateCollapsed;
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(Boolean(getToken()));
+  }, []);
 
   return (
     <aside
@@ -162,23 +168,37 @@ export const Sidebar: FC<{ collapsed?: boolean }> = ({ collapsed: collapsedProp 
         </ThreadListRoot>
       </div>
 
-      {/* Logout Footer Button (Pinned at Bottom) */}
+      {/* Auth Footer Button (Pinned at Bottom) */}
       <div className={cn("p-2 border-t border-white/10 shrink-0 bg-[#121212] z-30 pb-3 mt-auto", collapsed ? "px-1" : "px-3")}>
-        <button
-          type="button"
-          onClick={() => {
-            clearAuthToken();
-            window.location.href = "/api/auth/logout";
-          }}
-          title={collapsed ? "Log out" : undefined}
-          className={cn(
-            "flex items-center w-full rounded-lg text-xs text-white/70 hover:text-red-400 hover:bg-white/10 transition-colors duration-150 cursor-pointer py-2",
-            collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
-          )}
-        >
-          <LogOutIcon className="size-4 shrink-0 text-white/70 group-hover:text-red-400" />
-          {!collapsed && <span className="font-medium whitespace-nowrap">Log out</span>}
-        </button>
+        {isLoggedIn ? (
+          <button
+            type="button"
+            onClick={() => {
+              clearAuthToken();
+              window.location.href = "/api/auth/logout";
+            }}
+            title={collapsed ? "Log out" : undefined}
+            className={cn(
+              "flex items-center w-full rounded-lg text-xs text-white/70 hover:text-red-400 hover:bg-white/10 transition-colors duration-150 cursor-pointer py-2",
+              collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
+            )}
+          >
+            <LogOutIcon className="size-4 shrink-0 text-white/70 group-hover:text-red-400" />
+            {!collapsed && <span className="font-medium whitespace-nowrap">Log out</span>}
+          </button>
+        ) : (
+          <a
+            href="/api/auth/login"
+            title={collapsed ? "Log in" : undefined}
+            className={cn(
+              "flex items-center w-full rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 transition-all duration-150 cursor-pointer py-2 shadow-md shadow-blue-600/20",
+              collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
+            )}
+          >
+            <LogInIcon className="size-4 shrink-0" />
+            {!collapsed && <span className="whitespace-nowrap">Log in</span>}
+          </a>
+        )}
       </div>
     </aside>
   );
