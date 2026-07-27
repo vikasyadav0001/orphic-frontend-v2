@@ -3,9 +3,22 @@ import { scalekit } from "@/auth/scalekit-client";
 
 export const dynamic = 'force-dynamic';
 
+function getPublicOrigin(req: NextRequest): string {
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const host = forwardedHost || req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+
+  if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
+    return `${proto}://${host}`;
+  }
+
+  return new URL(req.url).origin;
+}
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const redirectUri = `${url.origin}/api/auth/callback`;
+  const origin = getPublicOrigin(req);
+  const redirectUri = `${origin}/api/auth/callback`;
   const promptParam = url.searchParams.get("prompt");
 
   try {
