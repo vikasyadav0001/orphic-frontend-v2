@@ -4,19 +4,15 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getToken } from "@/lib/api";
 
+const PUBLIC_PATHS = ["/", "/privacy", "/terms"];
+
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    // Landing page is public
-    if (pathname === "/") {
-      setChecked(true);
-      return;
-    }
-
-    // Public auth endpoints
-    if (pathname.startsWith("/api/auth")) {
+    // Public pages requiring no auth check
+    if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/api/auth")) {
       setChecked(true);
       return;
     }
@@ -31,7 +27,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     setChecked(true);
   }, [pathname]);
 
-  if (!checked && pathname !== "/") {
+  if (!checked && !PUBLIC_PATHS.includes(pathname)) {
     return (
       <div className="flex h-dvh w-full items-center justify-center bg-[#0D0A06] text-white">
         <div className="flex items-center gap-3">

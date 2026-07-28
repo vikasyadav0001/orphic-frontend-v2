@@ -752,14 +752,20 @@ export default function LandingPage() {
       <nav style={styles.nav}>
         <a href="/" style={styles.navLogo}>Orphic AI</a>
         <ul style={styles.navLinks}>
-          {["Features", "Connectors", "How it works"].map(l => (
-            <li key={l}>
+          {[
+            { label: "Features", href: "#features" },
+            { label: "Connectors", href: "#connectors" },
+            { label: "How it works", href: "#how-it-works" },
+            { label: "Privacy Policy", href: "/privacy" },
+            { label: "Terms of Service", href: "/terms" },
+          ].map(item => (
+            <li key={item.label}>
               <a
-                href={`#${l.toLowerCase().replace(/ /g, "-")}`}
+                href={item.href}
                 style={styles.navLink}
                 onMouseEnter={e => ((e.target as HTMLElement).style.color = "#C47A2B")}
                 onMouseLeave={e => ((e.target as HTMLElement).style.color = "#C4A882")}
-              >{l}</a>
+              >{item.label}</a>
             </li>
           ))}
         </ul>
@@ -1037,6 +1043,15 @@ export default function LandingPage() {
       <footer>
         <div style={styles.footer}>
           <div style={styles.footerLogo}>Orphic</div>
+          <div style={{ display: "flex", gap: "24px", fontSize: "14px", color: "rgba(255,255,255,0.7)" }}>
+            <a href="/privacy" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#C47A2B")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}>
+              Privacy Policy
+            </a>
+            <span>·</span>
+            <a href="/terms" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#C47A2B")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}>
+              Terms of Service
+            </a>
+          </div>
           <div style={styles.footerText}>
             © {new Date().getFullYear()} Orphic · Do Beyond Ordinary
           </div>
