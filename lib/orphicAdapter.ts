@@ -272,13 +272,21 @@ export const createOrphicAdapter = (
       const doResumeInterruptId = sessionStorage.getItem("do_resume");
       const isSystemResume = text.startsWith("[System: Resume Auth") || trimmedText.startsWith("[System: Resume Auth");
 
-      let resumeDecision = "connected";
+      type ResumeDecisionType = "connected" | "approve" | "reject" | "cancel" | "skip" | "submit";
+      let resumeDecision: ResumeDecisionType = "connected";
       if (text.includes(":skip") || trimmedText.includes(":skip")) {
         resumeDecision = "skip";
+      } else if (text.includes(":approve") || trimmedText.includes(":approve")) {
+        resumeDecision = "approve";
       } else if (text.includes(":cancel") || trimmedText.includes(":cancel") || text.includes(":reject") || trimmedText.includes(":reject")) {
         resumeDecision = "cancel";
       } else {
-        resumeDecision = sessionStorage.getItem("do_resume_decision") || "connected";
+        const stored = sessionStorage.getItem("do_resume_decision");
+        if (stored === "approve" || stored === "reject" || stored === "cancel" || stored === "skip" || stored === "submit") {
+          resumeDecision = stored;
+        } else {
+          resumeDecision = "connected";
+        }
       }
 
       let response: Response;
