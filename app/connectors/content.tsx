@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { getConnections, authorizeConnection, disconnectConnection, saveApiKeyConnection, testConnection } from "@/lib/api";
@@ -37,8 +38,31 @@ export default function ConnectorsContent() {
   const [connecting, setConnecting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all connection statuses
+  // Fetch all connection statuses and check for OAuth redirect return
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const isOAuthReturn =
+        params.get("status") === "success" ||
+        params.get("oauth") === "success" ||
+        params.get("connected") === "true" ||
+        Boolean(params.get("provider"));
+
+      const pendingInterruptId = sessionStorage.getItem("pending_interrupt_id");
+      if (isOAuthReturn && pendingInterruptId) {
+        const targetUrl = sessionStorage.getItem("pending_interrupt_url") || "/chat";
+        sessionStorage.setItem("do_resume", pendingInterruptId);
+        sessionStorage.removeItem("pending_interrupt_id");
+        sessionStorage.removeItem("pending_interrupt_url");
+        window.location.href = targetUrl;
+        return;
+      }
+
+      if (isOAuthReturn) {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    }
+
     getConnections()
       .then(async r => {
         if (!r.ok) {
@@ -193,61 +217,22 @@ export default function ConnectorsContent() {
         })}
       </div>
 
-      {/* API Key Section */}
-      <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">
-        API Keys
-      </p>
-      <div className="grid grid-cols-3 gap-3 mb-8">
-        {apikeyConnectors.map((c) => {
-          const isConnected = status[c.id]?.connected;
-          const showInput = showApiKey[c.id];
-          return (
-            <div key={c.id} className="flex flex-col bg-white/5 border border-white/10 rounded-xl px-4 py-3 gap-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img src={c.icon} className="size-5 object-contain" alt={c.name} />
-                  <span className="text-sm text-white font-medium">{c.name}</span>
-                  {isConnected && (
-                    <span className="text-xs text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">
-                      Connected
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => isConnected
-                    ? handleDisconnect(c.id)
-                    : setShowApiKey(prev => ({ ...prev, [c.id]: !showInput }))
-                  }
-                  className={cn(
-                    "text-xs px-3 py-1.5 rounded-lg border transition-colors",
-                    isConnected
-                      ? "border-red-500/30 text-red-400 hover:bg-red-500/10"
-                      : "border-white/20 text-white/70 hover:bg-white/10"
-                  )}
-                >
-                  {isConnected ? "Disconnect" : showInput ? "Cancel" : "Add Key"}
-                </button>
-              </div>
-              {showInput && (
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    placeholder={`Paste your ${c.name} API key`}
-                    value={apiKeyInputs[c.id] ?? ""}
-                    onChange={e => setApiKeyInputs(prev => ({ ...prev, [c.id]: e.target.value }))}
-                    className="w-full max-w-md bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/30"
-                  />
-                  <button
-                    onClick={() => handleApiKey(c.id)}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
-                  >
-                    Save
-                  </button>
-                </div>
-              )}
+      {/* Coming Soon Highlight Section */}
+      <div className="mt-8 relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-6 shadow-xl backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <div className="size-11 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-inner">
+            <Sparkles className="size-5 animate-pulse" />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-0.5 text-xs font-semibold text-amber-300 mb-1.5">
+              <span>Coming Soon</span>
             </div>
-          );
-        })}
+            <h3 className="text-base font-bold text-white tracking-tight">New connectors are coming soon</h3>
+            <p className="text-xs text-white/50 mt-0.5 leading-relaxed">
+              We’re expanding our integrations pipeline to bring seamless connections for more productivity tools, databases, and enterprise platforms.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

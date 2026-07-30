@@ -76,7 +76,9 @@ import {
   DotIcon,
   FanIcon,
   WorkflowIcon,
+  FlagIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { LexicalComposerInput } from "@assistant-ui/react-lexical";
 import { useState, useEffect, type FC, type ReactNode } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -131,11 +133,12 @@ const Sidebar: FC<{ collapsed?: boolean }> = ({ collapsed }) => {
           { href: "/chat", label: "New Thread", icon: <span aria-hidden className="grid place-items-center size-4 shrink-0 font-semibold text-base leading-none">+</span> },
           { href: "/workflows", label: "Workflows", icon: <WorkflowIcon className="size-4 shrink-0" /> },
           { href: "/connectors", label: "Connectors", icon: <PlugIcon className="size-4 shrink-0" /> },
+          { href: "/report", label: "Report", icon: <FlagIcon className="size-4 shrink-0" /> },
         ].map(({ href, label, icon }) => (
           <Tooltip key={href}>
             <TooltipTrigger
               render={
-                <a
+                <Link
                   href={href}
                   className={cn(
                     "flex items-center rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors",
@@ -146,7 +149,7 @@ const Sidebar: FC<{ collapsed?: boolean }> = ({ collapsed }) => {
                 >
                   {icon}
                   {!collapsed && <span>{label}</span>}
-                </a>
+                </Link>
               }
             />
             {collapsed && <TooltipContent side="right">{label}</TooltipContent>}
@@ -305,7 +308,15 @@ const Thread: FC = () => {
           <ThreadPrimitive.Messages>
             {({ message }) => {
               if (message.composer.isEditing) return <EditComposer />;
-              if (message.role === "user") return <UserMessage />;
+              if (message.role === "user") {
+                const parts = (message.content as any) || [];
+                const textPart = Array.isArray(parts) ? parts.find((p: any) => p.type === "text") : null;
+                const textValue = typeof textPart?.text === "string" ? textPart.text : (typeof message.content === "string" ? message.content : "");
+                if (textValue.startsWith("[System:")) {
+                  return null;
+                }
+                return <UserMessage />;
+              }
               return <AssistantMessage />;
             }}
           </ThreadPrimitive.Messages>
@@ -346,11 +357,27 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 
+const WELCOME_MESSAGES = [
+  "How can I help you today?",
+  "Build something?",
+  "Where shall we begin today?",
+  "What's on your mind today?",
+  "Ready to accomplish something great?",
+  "What's blocking you?"
+];
+
 const ThreadWelcome: FC = () => {
+  const [heading, setHeading] = useState("How can I help you today?");
+
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * WELCOME_MESSAGES.length);
+    setHeading(WELCOME_MESSAGES[randomIndex]);
+  }, []);
+
   return (
     <div className="aui-thread-welcome-root mx-auto mb-8 flex w-full max-w-(--thread-max-width) flex-col items-center px-4 text-center">
-      <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-3xl font-semibold tracking-tight duration-200 text-white">
-        How can I help you today?
+      <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-4xl sm:text-5xl font-normal tracking-wide duration-200 text-[#e2e1d7] font-[family-name:var(--font-pacifico)]">
+        {heading}
       </h1>
     </div>
   );
@@ -642,7 +669,7 @@ const Composer: FC = () => {
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           data-slot="aui_composer-shell"
-          className="relative border-white/10 flex w-full flex-col gap-2 rounded-3xl border bg-[#212121] p-3 shadow-sm transition-[border-color,box-shadow] focus-within:border-white/20"
+          className="relative flex w-full flex-col gap-2 rounded-3xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent backdrop-blur-xl p-3 shadow-xl shadow-amber-500/5 transition-[border-color,box-shadow] focus-within:border-amber-500/40"
         >
           <ComposerAttachments />
           <ComposerPrimitive.Input
@@ -980,7 +1007,7 @@ const AssistantMessage: FC = () => {
       data-role="assistant"
       className="relative mx-auto w-full max-w-(--thread-max-width) duration-150 fade-in slide-in-from-bottom-1 animate-in group/assistant-msg"
     >
-      <div className="px-2 leading-relaxed wrap-break-word text-white/90">
+      <div className="px-2 leading-relaxed wrap-break-word text-white/90 font-sans">
         <MessagePrimitive.GroupedParts
           groupBy={(part) => {
             const toolName = (part as any).toolName || (part as any).name || (part as any).tool_name;
@@ -1247,33 +1274,52 @@ export const ActivityToolUI = makeAssistantToolUI({
 });
 
 export function InterruptToolCallWidget({ args, result }: { args?: any; result?: any }) {
-  // If interrupt was resolved / connected by user, DISAPPEAR cleanly!
-  if (result) return null;
+  const aui = useAui();
+  const [hasActioned, setHasActioned] = useState(false);
+
+  // If interrupt was resolved or user clicked an action, DISAPPEAR cleanly!
+  if (result || hasActioned) return null;
 
   const actualArgs = args?.data || args;
   const authUrl = typeof actualArgs?.auth_url === "string" ? actualArgs.auth_url : (typeof args?.auth_url === "string" ? args.auth_url : "");
   const interruptId = typeof actualArgs?.id === "string" ? actualArgs.id : String(actualArgs?.id ?? args?.id ?? "");
   const provider = typeof actualArgs?.provider === "string" ? actualArgs.provider : typeof actualArgs?.provider_name === "string" ? actualArgs.provider_name : (typeof args?.provider === "string" ? args.provider : typeof args?.provider_name === "string" ? args.provider_name : "");
+  const formattedProvider = provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : "Account";
 
   const handleConnect = () => {
-    if (interruptId) sessionStorage.setItem("pending_interrupt_id", interruptId);
+    setHasActioned(true);
+    if (interruptId) {
+      sessionStorage.setItem("pending_interrupt_id", interruptId);
+      sessionStorage.setItem("pending_interrupt_url", window.location.href);
+    }
     if (authUrl) window.location.href = authUrl;
   };
 
+  const handleCancel = () => {
+    setHasActioned(true);
+    if (interruptId) {
+      sessionStorage.setItem("do_resume", interruptId);
+      sessionStorage.setItem("do_resume_decision", "cancel");
+      aui.thread().append({
+        content: [{ type: "text", text: "[System: Resume Auth:cancel]" }],
+      });
+    }
+  };
+
   return (
-    <div className="my-4 relative overflow-hidden rounded-2xl border border-blue-500/40 bg-gradient-to-r from-blue-950/60 via-[#181824] to-indigo-950/60 p-5 shadow-2xl shadow-blue-500/10 max-w-md animate-in fade-in zoom-in-95 duration-200">
+    <div className="my-4 relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-5 shadow-2xl shadow-amber-500/5 max-w-md backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
       {/* Ambient glow accent */}
-      <div className="pointer-events-none absolute -top-12 -right-12 size-36 rounded-full bg-blue-500/20 blur-2xl" />
+      <div className="pointer-events-none absolute -top-12 -right-12 size-36 rounded-full bg-amber-500/15 blur-2xl" />
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 shrink-0 shadow-inner">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 shadow-inner">
             <PlugIcon className="size-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-base text-white">Authorization Required</h3>
-              <span className="inline-flex items-center rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-medium text-blue-300 border border-blue-500/30 animate-pulse">
+              <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/30 animate-pulse">
                 Action Needed
               </span>
             </div>
@@ -1282,14 +1328,17 @@ export function InterruptToolCallWidget({ args, result }: { args?: any; result?:
         </div>
       </div>
 
-      <p className="mt-3.5 text-xs text-white/80 leading-relaxed bg-black/40 p-3 rounded-xl border border-white/10">
-        The agent needs access to your <span className="font-semibold text-blue-400">{provider ? provider.toUpperCase() : "external"}</span> connector to continue this workflow.
+      <p className="mt-3.5 text-xs text-white/80 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/10">
+        The agent needs access to your <span className="font-semibold text-amber-400">{provider ? provider.toUpperCase() : "external"}</span> connector to continue this workflow.
       </p>
 
-      <div className="mt-4 flex items-center gap-2">
-        <Button onClick={handleConnect} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-lg shadow-blue-600/30 transition-all gap-2 py-2 cursor-pointer">
+      <div className="mt-4 flex items-center gap-3">
+        <Button onClick={handleConnect} className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold shadow-lg shadow-amber-500/20 transition-all gap-2 py-2 cursor-pointer text-sm">
           <PlugIcon className="size-4" />
-          Connect {provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : "Account"}
+          Connect {formattedProvider}
+        </Button>
+        <Button onClick={handleCancel} variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-sm px-4 py-2 cursor-pointer">
+          Cancel
         </Button>
       </div>
     </div>

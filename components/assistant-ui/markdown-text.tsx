@@ -9,6 +9,7 @@ import {
   useIsMarkdownCodeBlock,
 } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 import { type FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
@@ -19,7 +20,8 @@ const MarkdownTextImpl = () => {
   return (
     <MarkdownTextPrimitive
       remarkPlugins={[remarkGfm]}
-      className="aui-md"
+      rehypePlugins={[rehypeHighlight]}
+      className="aui-md font-sans"
       components={defaultComponents}
       defer
     />
@@ -36,8 +38,8 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   };
 
   return (
-    <div className="aui-code-header-root border-border/50 bg-muted/50 mt-3 flex items-center justify-between rounded-t-xl border border-b-0 px-3.5 py-1.5 text-xs">
-      <span className="aui-code-header-language text-muted-foreground font-medium lowercase">
+    <div className="aui-code-header-root border-border/50 bg-muted/50 mt-3 flex items-center justify-between rounded-t-xl border border-b-0 px-3.5 py-1.5 text-xs font-mono">
+      <span className="aui-code-header-language text-muted-foreground font-mono font-medium lowercase">
         {language}
       </span>
       <TooltipIconButton tooltip="Copy" onClick={onCopy}>
@@ -233,22 +235,24 @@ const defaultComponents = memoizeMarkdownComponents({
       {...props}
     />
   ),
-  pre: ({ className, ...props }) => (
+  pre: ({ className, style, ...props }) => (
     <pre
+      style={{ fontFamily: "'Droid Sans Mono', 'monospace', monospace", ...style }}
       className={cn(
-        "aui-md-pre border-border/50 bg-muted/30 overflow-x-auto rounded-t-none rounded-b-xl border border-t-0 p-3.5 text-[13px] leading-relaxed",
+        "aui-md-pre border-border/50 bg-muted/30 overflow-x-auto rounded-t-none rounded-b-xl border border-t-0 p-3.5 text-[13px] leading-relaxed tracking-normal font-normal text-amber-100/90",
         className,
       )}
       {...props}
     />
   ),
-  code: function Code({ className, ...props }) {
+  code: function Code({ className, style, ...props }) {
     const isCodeBlock = useIsMarkdownCodeBlock();
     return (
       <code
+        style={{ fontFamily: "'Droid Sans Mono', 'monospace', monospace", ...style }}
         className={cn(
           !isCodeBlock &&
-            "aui-md-inline-code bg-muted rounded-md px-1.5 py-0.5 font-mono text-[0.85em]",
+            "aui-md-inline-code bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-md px-1.5 py-0.5 text-[0.85em]",
           className,
         )}
         {...props}

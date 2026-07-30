@@ -270,21 +270,39 @@ export const createOrphicAdapter = (
       }
 
       const doResumeInterruptId = sessionStorage.getItem("do_resume");
-      const response =
-        text === RESUME_AUTH_MESSAGE && doResumeInterruptId
-          ? await (async () => {
-              sessionStorage.removeItem("do_resume");
-              return chatResume(
-                activeThreadId,
-                {
-                  interrupt_id: doResumeInterruptId,
-                  decision: "connected",
-                  input: {},
-                },
-                abortSignal,
-              );
-            })()
-          : await chatStream(formData, abortSignal);
+      const isSystemResume = text.startsWith("[System: Resume Auth") || trimmedText.startsWith("[System: Resume Auth");
+
+      let resumeDecision = "connected";
+      if (text.includes(":skip") || trimmedText.includes(":skip")) {
+        resumeDecision = "skip";
+      } else if (text.includes(":cancel") || trimmedText.includes(":cancel") || text.includes(":reject") || trimmedText.includes(":reject")) {
+        resumeDecision = "cancel";
+      } else {
+        resumeDecision = sessionStorage.getItem("do_resume_decision") || "connected";
+      }
+
+      let response: Response;
+      if (isSystemResume && doResumeInterruptId) {
+        sessionStorage.removeItem("do_resume");
+        sessionStorage.removeItem("do_resume_decision");
+        const res = await chatResume(
+          activeThreadId,
+          {
+            interrupt_id: doResumeInterruptId,
+            decision: resumeDecision,
+            input: {},
+          }
+        );
+        if (res.ok) {
+          response = res;
+        } else {
+          console.warn("[orphicAdapter] chatResume status:", res.status, "falling back to chatStream");
+          formData.append("message", resumeDecision === "cancel" ? "Action cancelled" : "Continue workflow");
+          response = await chatStream(formData, abortSignal);
+        }
+      } else {
+        response = await chatStream(formData, abortSignal);
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);

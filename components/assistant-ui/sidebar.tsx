@@ -2,7 +2,8 @@
 
 import { FC, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { FanIcon, LogInIcon, LogOutIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlugIcon, WorkflowIcon } from "lucide-react";
+import Link from "next/link";
+import { FanIcon, FlagIcon, LogInIcon, LogOutIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlugIcon, WorkflowIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThreadListItems, ThreadListRoot } from "@/components/assistant-ui/thread-list";
@@ -105,11 +106,12 @@ export const Sidebar: FC<{ collapsed?: boolean }> = ({ collapsed: collapsedProp 
           { href: "/chat", label: "New Thread", icon: <span aria-hidden className="grid place-items-center size-4 shrink-0 font-semibold text-base leading-none">+</span> },
           { href: "/workflows", label: "Workflows", icon: <WorkflowIcon className="size-4 shrink-0" /> },
           { href: "/connectors", label: "Connectors", icon: <PlugIcon className="size-4 shrink-0" /> },
+          { href: "/report", label: "Report", icon: <FlagIcon className="size-4 shrink-0" /> },
         ].map(({ href, label, icon }) => (
           <Tooltip key={href}>
             <TooltipTrigger
               render={
-                <a
+                <Link
                   href={href}
                   className={cn(
                     "flex items-center rounded-lg text-sm text-white/70 transition-all duration-150",
@@ -122,7 +124,7 @@ export const Sidebar: FC<{ collapsed?: boolean }> = ({ collapsed: collapsedProp 
                 >
                   {icon}
                   {!collapsed && <span className="whitespace-nowrap">{label}</span>}
-                </a>
+                </Link>
               }
             />
             {collapsed && <TooltipContent side="right">{label}</TooltipContent>}

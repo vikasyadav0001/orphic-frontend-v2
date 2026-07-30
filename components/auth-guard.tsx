@@ -8,7 +8,14 @@ const PUBLIC_PATHS = ["/", "/privacy", "/terms"];
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [checked, setChecked] = useState(false);
+  const [checked, setChecked] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const path = window.location.pathname;
+    if (PUBLIC_PATHS.includes(path) || path.startsWith("/api/auth")) {
+      return true;
+    }
+    return Boolean(getToken());
+  });
 
   useEffect(() => {
     // Public pages requiring no auth check
