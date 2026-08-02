@@ -304,20 +304,18 @@ const UsageStats: FC = () => {
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer group"
-        >
-          <ChartColumnIcon className="size-3.5 text-white/60 group-hover:text-white transition-colors" />
-          <span>Usage</span>
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 relative">
-            <span className={cn(
-              "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping", 
-              getProgressColor(reqPercent)
-            )} />
-          </div>
-        </button>
+      <DropdownMenuTrigger
+        type="button"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer group"
+      >
+        <ChartColumnIcon className="size-3.5 text-white/60 group-hover:text-white transition-colors" />
+        <span>Usage</span>
+        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 relative">
+          <span className={cn(
+            "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping", 
+            getProgressColor(reqPercent)
+          )} />
+        </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
