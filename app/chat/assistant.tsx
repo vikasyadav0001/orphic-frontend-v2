@@ -194,8 +194,6 @@ export const Assistant: FC<{ children: ReactNode; threadId: string }> = ({ child
         if (res.ok) {
           const data = await res.json();
           const messages = Array.isArray(data) ? data : (data.messages || []);
-          console.log("[assistant] Raw messages from backend:", JSON.stringify(messages, null, 2));
-
           if (isMounted) {
             const formattedMessages = messages
               .flatMap((m: any) => {

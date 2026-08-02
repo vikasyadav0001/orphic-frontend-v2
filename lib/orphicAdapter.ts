@@ -259,6 +259,9 @@ export const createOrphicAdapter = (
       const formData = new FormData();
       formData.append("session_id", activeThreadId);
 
+      const selectedModel = (typeof window !== "undefined" && localStorage.getItem("orphic_selected_model")) || "gpt-5-nano";
+      formData.append("model", selectedModel);
+
       if (attachedFiles.length > 0) {
         attachedFiles.forEach((file) => {
           formData.append("file", file, file.name);
@@ -313,6 +316,21 @@ export const createOrphicAdapter = (
       }
 
       if (!response.ok) {
+        if (response.status === 429) {
+          try {
+            const body = await response.json();
+            if (body && body.detail) {
+              const detail = body.detail;
+              const reason = detail.denied_reason || "requests_hour";
+              const retryAfter = detail.retry_after || 0;
+              throw new Error(`LIMIT_EXCEEDED:${reason}:${retryAfter}`);
+            }
+          } catch (e) {
+            if (e instanceof Error && e.message.startsWith("LIMIT_EXCEEDED:")) {
+              throw e;
+            }
+          }
+        }
         throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
       }
 
@@ -425,9 +443,6 @@ export const createOrphicAdapter = (
 
         const isInterrupt = payload.type === "interrupt" || payload.kind === "connector_required" || payload.data?.type === "interrupt";
         if (payload.type === "activity" || isInterrupt) {
-          if (isInterrupt) {
-            console.log("[orphicAdapter] 🔌 Interrupt received:", JSON.stringify(payload, null, 2));
-          }
           const toolName = isInterrupt ? "interrupt" : payload.type;
           const toolCallId =
             payload.data?.id || payload.id || `${toolName}_${Math.random().toString(36).slice(2, 9)}`;

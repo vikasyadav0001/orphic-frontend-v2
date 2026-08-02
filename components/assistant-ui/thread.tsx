@@ -5,7 +5,7 @@ import {
   ComposerAttachments,
   UserMessageAttachments,
 } from "@/components/assistant-ui/attachment";
-import { authorizeConnection, getConnections, disconnectConnection, clearAuthToken } from "@/lib/api";
+import { authorizeConnection, getConnections, disconnectConnection, clearAuthToken, getUserUsage } from "@/lib/api";
 import { DotMatrix, type DotMatrixState } from "@/components/assistant-ui/dot-matrix";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { MessageTiming } from "@/components/assistant-ui/message-timing";
@@ -234,6 +234,151 @@ const ThreadTitle: FC = () => {
   );
 };
 
+interface LimitDetail {
+  current: number;
+  limit: number;
+}
+
+interface UsageLimits {
+  requests: {
+    this_hour: LimitDetail;
+    today: LimitDetail;
+  };
+  tokens: {
+    this_hour: LimitDetail;
+    today: LimitDetail;
+  };
+}
+
+const UsageStats: FC = () => {
+  const [usage, setUsage] = useState<UsageLimits | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const fetchUsage = async () => {
+    try {
+      setLoading(true);
+      const res = await getUserUsage();
+      if (res.ok) {
+        const data = await res.json();
+        setUsage(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user usage", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsage();
+    // Poll every 20 seconds for real-time updates
+    const interval = setInterval(fetchUsage, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
+      fetchUsage();
+    }
+  };
+
+  if (!usage) return null;
+
+  // Let's get requests stats for display
+  const reqToday = usage.requests?.today?.current ?? 0;
+  const reqTodayLimit = usage.requests?.today?.limit ?? 1;
+  const reqPercent = Math.min(100, Math.round((reqToday / reqTodayLimit) * 100));
+
+  // Determine indicator color based on usage percent
+  const getProgressColor = (percent: number) => {
+    if (percent > 85) return "bg-red-500";
+    if (percent > 60) return "bg-amber-500";
+    return "bg-emerald-500";
+  };
+
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat().format(num);
+  };
+
+  return (
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer group"
+        >
+          <ChartColumnIcon className="size-3.5 text-white/60 group-hover:text-white transition-colors" />
+          <span>Usage</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 relative">
+            <span className={cn(
+              "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping", 
+              getProgressColor(reqPercent)
+            )} />
+          </div>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent 
+        align="end" 
+        className="w-64 p-4 bg-[#18181a]/95 backdrop-blur-md border border-white/10 text-white rounded-xl shadow-xl space-y-4"
+      >
+        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+          <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider">Usage & Limits</h3>
+          {loading && <div className="size-3 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />}
+        </div>
+
+        {/* Requests Limits */}
+        <div className="space-y-2.5">
+          <div className="flex justify-between items-center text-xs">
+            <span className="font-medium text-white/70">Requests (Today)</span>
+            <span className="font-semibold">{reqToday} / {reqTodayLimit}</span>
+          </div>
+          <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+            <div 
+              className={cn("h-full transition-all duration-500 ease-out", getProgressColor(reqPercent))}
+              style={{ width: `${reqPercent}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] text-white/40">
+            <span>Hourly: {usage.requests?.this_hour?.current} / {usage.requests?.this_hour?.limit}</span>
+            <span>{reqPercent}% Used</span>
+          </div>
+        </div>
+
+        <div className="border-t border-white/5 pt-3 space-y-2.5">
+          {/* Tokens Limits */}
+          <div className="flex justify-between items-center text-xs">
+            <span className="font-medium text-white/70">Tokens (Today)</span>
+            <span className="font-semibold text-[11px]">
+              {formatNumber(usage.tokens?.today?.current ?? 0)} / {formatNumber(usage.tokens?.today?.limit ?? 0)}
+            </span>
+          </div>
+          {(() => {
+            const tokToday = usage.tokens?.today?.current ?? 0;
+            const tokTodayLimit = usage.tokens?.today?.limit ?? 1;
+            const tokPercent = Math.min(100, Math.round((tokToday / tokTodayLimit) * 100));
+            return (
+              <>
+                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className={cn("h-full transition-all duration-500 ease-out", getProgressColor(tokPercent))}
+                    style={{ width: `${tokPercent}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-white/40">
+                  <span>Hourly: {formatNumber(usage.tokens?.this_hour?.current ?? 0)} / {formatNumber(usage.tokens?.this_hour?.limit ?? 0)}</span>
+                  <span>{tokPercent}% Used</span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 const Header: FC<{
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
@@ -257,18 +402,21 @@ const Header: FC<{
         />
       </TooltipIconButton>
       <ThreadTitle />
-      <button
-        type="button"
-        onClick={() => {
-          clearAuthToken();
-          window.location.href = "/api/auth/logout";
-        }}
-        className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/80 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/10 transition-colors cursor-pointer"
-        title="Log out of Orphic"
-      >
-        <LogOutIcon className="size-3.5 text-white/60 group-hover:text-red-400" />
-        <span>Log out</span>
-      </button>
+      <div className="ml-auto flex items-center gap-2">
+        <UsageStats />
+        <button
+          type="button"
+          onClick={() => {
+            clearAuthToken();
+            window.location.href = "/api/auth/logout";
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/80 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/10 transition-colors cursor-pointer"
+          title="Log out of Orphic"
+        >
+          <LogOutIcon className="size-3.5 text-white/60 group-hover:text-red-400" />
+          <span>Log out</span>
+        </button>
+      </div>
     </header>
   );
 };
@@ -376,8 +524,8 @@ const ThreadWelcome: FC = () => {
   }, []);
 
   return (
-    <div className="aui-thread-welcome-root mx-auto mb-8 flex w-full max-w-(--thread-max-width) flex-col items-center px-4 text-center">
-      <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-4xl sm:text-5xl font-normal tracking-wide duration-200 text-[#e2e1d7] font-[family-name:var(--font-pacifico)]">
+    <div className="aui-thread-welcome-root mx-auto mb-6 flex w-full max-w-(--thread-max-width) flex-col items-center px-4 text-center">
+      <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-4xl sm:text-3xl font-normal tracking-wide duration-200 text-[#e2e1d7] font-[family-name:var(--font-pacifico)]">
         {heading}
       </h1>
     </div>
@@ -487,18 +635,28 @@ const ThreadSuggestions: FC = () => {
 };
 
 const MODELS = [
+  { id: "gpt-5.6-luna",  name: "GPT-5.6 Luna",          icon: "/openai.svg"   },
   { id: "gpt-5.4-nano",  name: "GPT-5.4 Nano",          icon: "/openai.svg"   },
-  { id: "opus-4.6",  name: "Claude Opus 4.6",          icon: "/anthropic.svg"   },
-  { id: "gpt-5.4-mini",  name: "GPT-5.4 Mini",          icon: "/openai.svg"   },
-  { id: "gemini-1.5",    name: "Gemini 3.1 Flash",  icon: "/gemini.svg"   },
-  { id: "grok-fast",     name: "Grok 4.1 Fast",          icon: "/groq.svg"     },
-  { id: "grok-mini",     name: "Grok 3 Mini",            icon: "/groq.svg"     },
-  { id: "llama",         name: "Llama 4 Scout 17B",      icon: "/meta.svg" },
-  { id: "qwen",          name: "Qwen3 32B",              icon: "/globe.svg"    },
+  { id: "gpt-5-nano",    name: "GPT-5 Nano",            icon: "/openai.svg"   },
 ];
 
 const ModelSelector = () => {
-  const [selected, setSelected] = useState(MODELS[0]);
+  const [selected, setSelected] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("orphic_selected_model");
+      const found = MODELS.find((m) => m.id === stored);
+      if (found) return found;
+    }
+    return MODELS[2]; // Default to gpt-5-nano
+  });
+
+  const handleSelect = (model: typeof MODELS[number]) => {
+    setSelected(model);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("orphic_selected_model", model.id);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -514,7 +672,7 @@ const ModelSelector = () => {
         {MODELS.map((model) => (
           <DropdownMenuItem 
             key={model.id} 
-            onClick={() => setSelected(model)}
+            onClick={() => handleSelect(model)}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white"
           >
             <img src={model.icon} alt={model.name} className="size-4 object-contain" />
@@ -943,6 +1101,64 @@ const ComposerAction: FC<{ onSend: () => void }> = ({ onSend }) => {
 };
 
 const MessageError: FC = () => {
+  const status = useAuiState((s) => s.message.status);
+  const errorObj = status?.type === "incomplete" && status.reason === "error" ? status.error : null;
+  const errorMsg = errorObj?.message || errorObj?.toString() || "";
+
+  if (errorMsg.startsWith("LIMIT_EXCEEDED:")) {
+    const parts = errorMsg.split(":");
+    const reason = parts[1] || "requests_hour";
+    const retryAfter = parseInt(parts[2], 10) || 0;
+
+    let timeString = "";
+    if (retryAfter > 0) {
+      if (retryAfter < 60) {
+        timeString = `${retryAfter} second${retryAfter > 1 ? "s" : ""}`;
+      } else if (retryAfter < 3600) {
+        const mins = Math.ceil(retryAfter / 60);
+        timeString = `${mins} minute${mins > 1 ? "s" : ""}`;
+      } else {
+        const hours = Math.ceil(retryAfter / 3600);
+        timeString = `${hours} hour${hours > 1 ? "s" : ""}`;
+      }
+    }
+
+    const isHourly = reason.includes("hour");
+    const isToken = reason.includes("token");
+
+    const title = isHourly
+      ? "Hourly Limit Exhausted"
+      : "Daily Limit Exhausted";
+
+    const description = isToken
+      ? `You have reached your allowed token limit. Please try again in ${timeString || "a short while"}.`
+      : `You have sent too many messages. Please try again in ${timeString || "a short while"}.`;
+
+    return (
+      <MessagePrimitive.Error>
+        <div className="mt-2 rounded-lg border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-amber-950/20 to-neutral-900/60 p-4 text-sm text-amber-200 backdrop-blur shadow-lg flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="flex items-center gap-2 font-semibold text-amber-400">
+            <svg
+              className="h-4 w-4 animate-pulse text-amber-500 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <span>{title}</span>
+          </div>
+          <p className="text-amber-300/80 font-normal leading-relaxed">{description}</p>
+        </div>
+      </MessagePrimitive.Error>
+    );
+  }
+
   return (
     <MessagePrimitive.Error>
       <ErrorPrimitive.Root className="mt-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-200">

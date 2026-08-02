@@ -209,3 +209,10 @@ export const testConnection = (provider: string) => {
 export const healthCheck = () => {
   return fetch(`${API}/health`);
 };
+
+export const getUserUsage = () => {
+  return fetch(`${API}/user/usage`, {
+    headers: getHeaders(),
+  });
+};
+
