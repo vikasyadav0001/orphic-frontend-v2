@@ -1100,8 +1100,13 @@ const ComposerAction: FC<{ onSend: () => void }> = ({ onSend }) => {
 
 const MessageError: FC = () => {
   const status = useAuiState((s) => s.message.status);
-  const errorObj = status?.type === "incomplete" && status.reason === "error" ? status.error : null;
-  const errorMsg = errorObj?.message || errorObj?.toString() || "";
+  const rawError = status?.type === "incomplete" && status.reason === "error" ? status.error : null;
+  const errorObj = rawError as any;
+  const errorMsg: string = typeof rawError === "string"
+    ? rawError
+    : errorObj?.message
+    ? String(errorObj.message)
+    : String(rawError || "");
 
   if (errorMsg.startsWith("LIMIT_EXCEEDED:")) {
     const parts = errorMsg.split(":");
