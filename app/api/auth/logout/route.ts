@@ -1,8 +1,8 @@
 import { NextResponse, NextRequest } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const loginUrl = new URL("/api/auth/login?prompt=login", req.url);
-  const response = NextResponse.redirect(loginUrl);
+  const homeUrl = new URL("/", req.url);
+  const response = NextResponse.redirect(homeUrl);
 
   // Deep cookie deletion across all path variants
   response.cookies.delete("scalekit_token");
