@@ -81,7 +81,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { LexicalComposerInput } from "@assistant-ui/react-lexical";
-import { useState, useEffect, type FC, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type FC, type ReactNode } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Tooltip,
@@ -114,14 +114,14 @@ const Sidebar: FC<{ collapsed?: boolean }> = ({ collapsed }) => {
     <aside
       data-collapsed={collapsed}
       className={cn(
-        "flex h-full flex-col overflow-hidden transition-[width,padding] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] bg-[#121212] border-r border-white/10",
+        "flex h-full flex-col overflow-hidden transition-[width,padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] bg-[#171717] border-r border-white/10 transform-gpu will-change-[width]",
         collapsed ? "w-12" : "w-64",
       )}
     >
       {/* Logo */}
       <div
         className={cn(
-          "mt-4 mb-2 flex h-8 shrink-0 items-center transition-[padding] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]",
+          "mt-4 mb-2 flex h-8 shrink-0 items-center transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
           collapsed ? "justify-center px-0" : "px-3",
         )}
       >
@@ -129,64 +129,68 @@ const Sidebar: FC<{ collapsed?: boolean }> = ({ collapsed }) => {
       </div>
 
       {/* Nav Items */}
-      <div className={cn("flex flex-col gap-0.5 shrink-0", collapsed ? "px-0 items-center" : "px-3")}>
+      <div className={cn("flex flex-col gap-0.5 shrink-0 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]", collapsed ? "px-1 items-center" : "px-3")}>
         {[
           { href: "/chat", label: "New Thread", icon: <span aria-hidden className="grid place-items-center size-4 shrink-0 font-semibold text-base leading-none">+</span> },
           { href: "/workflows", label: "Workflows", icon: <WorkflowIcon className="size-4 shrink-0" /> },
           { href: "/connectors", label: "Connectors", icon: <PlugIcon className="size-4 shrink-0" /> },
           { href: "/report", label: "Report", icon: <FlagIcon className="size-4 shrink-0" /> },
         ].map(({ href, label, icon }) => (
-          <Tooltip key={href}>
-            <TooltipTrigger
-              render={
-                <Link
-                  href={href}
-                  className={cn(
-                    "flex items-center rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors",
-                    collapsed
-                      ? "justify-center w-8 h-8 p-0"
-                      : "gap-2.5 px-2 py-1.5",
-                  )}
-                >
-                  {icon}
-                  {!collapsed && <span>{label}</span>}
-                </Link>
-              }
-            />
-            {collapsed && <TooltipContent side="right">{label}</TooltipContent>}
-          </Tooltip>
+          <Link
+            key={href}
+            href={href}
+            title={collapsed ? label : undefined}
+            className={cn(
+              "flex items-center rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-all duration-200 ease-out",
+              collapsed
+                ? "justify-center w-8 h-8 p-0"
+                : "gap-2.5 px-2 py-1.5",
+            )}
+          >
+            {icon}
+            <span
+              className={cn(
+                "whitespace-nowrap transition-all duration-200 ease-out",
+                collapsed ? "w-0 opacity-0 overflow-hidden pointer-events-none" : "w-auto opacity-100",
+              )}
+            >
+              {label}
+            </span>
+          </Link>
         ))}
       </div>
 
-
       {/* Divider */}
       <div className={cn(
-        "mt-16 mb-2 shrink-0 border-t border-white/10",
+        "mt-4 mb-2 shrink-0 border-t border-white/10 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
         collapsed ? "mx-2 pt-2" : "mx-3 pt-2"
       )} />
 
       {/* Recents label */}
-      {!collapsed && (
-        <p className="px-4 pb-1 text-xs font-medium text-white/40 uppercase tracking-wider shrink-0">
-          Recents
-        </p>
-      )}
+      <p
+        className={cn(
+          "px-4 pb-1 text-xs font-medium text-white/40 uppercase tracking-wider shrink-0 transition-all duration-200 ease-out",
+          collapsed ? "w-0 opacity-0 overflow-hidden pointer-events-none" : "w-auto opacity-100",
+        )}
+      >
+        Recents
+      </p>
 
       {/* Thread List */}
       <ThreadListRoot
         className={cn(
-          "relative flex-1 overflow-y-auto transition-[padding,width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
-          collapsed ? "w-12 px-2 pt-1" : "w-64 p-3 pt-1",
+          "relative flex-1 overflow-y-auto transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          collapsed ? "w-12 px-1 pt-1" : "w-64 p-3 pt-1",
         )}
       >
         <ThreadListItems
           aria-hidden={collapsed}
           inert={collapsed}
           className={cn(
-            "transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]",
+            "transition-all duration-200 ease-out",
             collapsed
-              ? "pointer-events-none -translate-x-1 opacity-0 delay-75"
-              : "translate-x-0 opacity-100 delay-50",
+              ? "pointer-events-none -translate-x-1 opacity-0"
+              : "translate-x-0 opacity-100",
           )}
         />
       </ThreadListRoot>
@@ -209,7 +213,7 @@ const MobileSidebar: FC = () => {
           </Button>
         }
       />
-      <SheetContent side="left" className="flex w-70 flex-col p-0 bg-[#121212] border-r-white/10">
+      <SheetContent side="left" className="flex w-70 flex-col p-0 bg-[#171717] border-r-white/10">
         <div className="flex h-16 shrink-0 items-center px-4">
           <Logo />
         </div>
@@ -270,13 +274,6 @@ const UsageStats: FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUsage();
-    // Poll every 20 seconds for real-time updates
-    const interval = setInterval(fetchUsage, 20000);
-    return () => clearInterval(interval);
-  }, []);
-
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
@@ -284,11 +281,9 @@ const UsageStats: FC = () => {
     }
   };
 
-  if (!usage) return null;
-
   // Let's get requests stats for display
-  const reqToday = usage.requests?.today?.current ?? 0;
-  const reqTodayLimit = usage.requests?.today?.limit ?? 1;
+  const reqToday = usage?.requests?.today?.current ?? 0;
+  const reqTodayLimit = usage?.requests?.today?.limit ?? 1;
   const reqPercent = Math.min(100, Math.round((reqToday / reqTodayLimit) * 100));
 
   // Determine indicator color based on usage percent
@@ -312,13 +307,13 @@ const UsageStats: FC = () => {
         <span>Usage</span>
         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 relative">
           <span className={cn(
-            "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping", 
+            "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping",
             getProgressColor(reqPercent)
           )} />
         </div>
       </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        align="end" 
+      <DropdownMenuContent
+        align="end"
         className="w-64 p-4 bg-[#18181a]/95 backdrop-blur-md border border-white/10 text-white rounded-xl shadow-xl space-y-4"
       >
         <div className="flex items-center justify-between border-b border-white/5 pb-2">
@@ -333,13 +328,13 @@ const UsageStats: FC = () => {
             <span className="font-semibold">{reqToday} / {reqTodayLimit}</span>
           </div>
           <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-            <div 
+            <div
               className={cn("h-full transition-all duration-500 ease-out", getProgressColor(reqPercent))}
               style={{ width: `${reqPercent}%` }}
             />
           </div>
           <div className="flex justify-between text-[10px] text-white/40">
-            <span>Hourly: {usage.requests?.this_hour?.current} / {usage.requests?.this_hour?.limit}</span>
+            <span>Hourly: {usage?.requests?.this_hour?.current ?? 0} / {usage?.requests?.this_hour?.limit ?? 0}</span>
             <span>{reqPercent}% Used</span>
           </div>
         </div>
@@ -349,29 +344,34 @@ const UsageStats: FC = () => {
           <div className="flex justify-between items-center text-xs">
             <span className="font-medium text-white/70">Tokens (Today)</span>
             <span className="font-semibold text-[11px]">
-              {formatNumber(usage.tokens?.today?.current ?? 0)} / {formatNumber(usage.tokens?.today?.limit ?? 0)}
+              {formatNumber(usage?.tokens?.today?.current ?? 0)} / {formatNumber(usage?.tokens?.today?.limit ?? 0)}
             </span>
           </div>
           {(() => {
-            const tokToday = usage.tokens?.today?.current ?? 0;
-            const tokTodayLimit = usage.tokens?.today?.limit ?? 1;
+            const tokToday = usage?.tokens?.today?.current ?? 0;
+            const tokTodayLimit = usage?.tokens?.today?.limit ?? 1;
             const tokPercent = Math.min(100, Math.round((tokToday / tokTodayLimit) * 100));
             return (
               <>
                 <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className={cn("h-full transition-all duration-500 ease-out", getProgressColor(tokPercent))}
                     style={{ width: `${tokPercent}%` }}
                   />
                 </div>
                 <div className="flex justify-between text-[10px] text-white/40">
-                  <span>Hourly: {formatNumber(usage.tokens?.this_hour?.current ?? 0)} / {formatNumber(usage.tokens?.this_hour?.limit ?? 0)}</span>
+                  <span>Hourly: {formatNumber(usage?.tokens?.this_hour?.current ?? 0)} / {formatNumber(usage?.tokens?.this_hour?.limit ?? 0)}</span>
                   <span>{tokPercent}% Used</span>
                 </div>
               </>
             );
           })()}
         </div>
+        {!usage && !loading && (
+          <div className="text-[11px] text-white/40">
+            Open this menu to load your live usage stats.
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -382,7 +382,7 @@ const Header: FC<{
   onToggleSidebar: () => void;
 }> = ({ sidebarCollapsed, onToggleSidebar }) => {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 px-4 bg-[#121212]">
+    <header className="flex h-14 shrink-0 items-center gap-2 px-4 bg-transparent">
       <MobileSidebar />
       <TooltipIconButton
         variant="ghost"
@@ -428,7 +428,7 @@ const Thread: FC = () => {
 
   return (
     <ThreadPrimitive.Root
-      className="aui-root aui-thread-root bg-[#121212] @container flex h-full flex-col"
+      className="aui-root aui-thread-root bg-background @container flex h-full flex-col"
       style={{
         ["--thread-max-width" as string]: "48rem",
         ["--composer-bg" as string]: "#18181a",
@@ -471,7 +471,7 @@ const Thread: FC = () => {
 
         <ThreadPrimitive.ViewportFooter
           className={cn(
-            "aui-thread-viewport-footer bg-[#121212] mx-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible pb-4 md:pb-6",
+            "aui-thread-viewport-footer bg-background mx-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible pb-4 md:pb-6",
             !isEmpty && "sticky bottom-0 mt-auto rounded-t-(--composer-radius)",
           )}
         >
@@ -633,9 +633,9 @@ const ThreadSuggestions: FC = () => {
 };
 
 const MODELS = [
-  { id: "gpt-5.6-luna",  name: "GPT-5.6 Luna",          icon: "/openai.svg"   },
-  { id: "gpt-5.4-nano",  name: "GPT-5.4 Nano",          icon: "/openai.svg"   },
-  { id: "gpt-5-nano",    name: "GPT-5 Nano",            icon: "/openai.svg"   },
+  { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", icon: "/openai.svg" },
+  { id: "gpt-5.4-nano", name: "GPT-5.4 Nano", icon: "/openai.svg" },
+  { id: "gpt-5-nano", name: "GPT-5 Nano", icon: "/openai.svg" },
 ];
 
 const ModelSelector = () => {
@@ -668,8 +668,8 @@ const ModelSelector = () => {
       />
       <DropdownMenuContent align="start" className="min-w-[180px] p-1.5 rounded-xl border-white/10 bg-[#1e1e1e] text-white shadow-xl">
         {MODELS.map((model) => (
-          <DropdownMenuItem 
-            key={model.id} 
+          <DropdownMenuItem
+            key={model.id}
             onClick={() => handleSelect(model)}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white"
           >
@@ -712,6 +712,12 @@ const Composer: FC = () => {
   const activeTrigger = getActiveTrigger(value);
   const suggestions = activeTrigger?.type === "slash" ? SLASH_COMMANDS : MENTION_COMMANDS;
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const wordCount = useMemo(() => {
+    const trimmed = value.trim();
+    if (!trimmed) return 0;
+    return trimmed.split(/\s+/).filter(Boolean).length;
+  }, [value]);
 
   const normalizeCommand = (rawText: string) => {
     const trimmed = rawText.trim();
@@ -757,6 +763,7 @@ const Composer: FC = () => {
     const hasAttachments = composerState.attachments.length > 0;
 
     if (!hasText && !hasAttachments) return;
+    if (wordCount > 1000) return;
 
     if (hasText) {
       const normalized = normalizeCommand(rawText);
@@ -836,7 +843,14 @@ const Composer: FC = () => {
             autoFocus
             value={value}
             onChange={(event) => {
-              setText(event.target.value);
+              const newText = event.target.value;
+              const inputWords = newText.trim().split(/\s+/).filter(Boolean);
+              if (inputWords.length > 1000) {
+                const limited = inputWords.slice(0, 1000).join(" ");
+                setText(limited);
+              } else {
+                setText(newText);
+              }
               setActiveIndex(0);
             }}
             onKeyDown={handleInputKeyDown}
@@ -867,7 +881,7 @@ const Composer: FC = () => {
               ))}
             </div>
           )}
-          <ComposerAction onSend={handleSend} />
+          <ComposerAction onSend={handleSend} wordCount={wordCount} />
         </div>
       </ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
@@ -875,11 +889,11 @@ const Composer: FC = () => {
 };
 
 const QUICK_CONNECTORS = [
-  { id: "google_gmail",  name: "Gmail",    icon: "/gmail-2026.svg" },
-  { id: "github",        name: "GitHub",   icon: "/github-dark.svg" },
-  { id: "notion",        name: "Notion",   icon: "/notion.svg" },
-  { id: "slack",         name: "Slack",    icon: "/slack.svg" },
-  { id: "google_drive",  name: "Drive",    icon: "/google-drive-2026.svg" },
+  { id: "google_gmail", name: "Gmail", icon: "/gmail-2026.svg" },
+  { id: "github", name: "GitHub", icon: "/github-dark.svg" },
+  { id: "notion", name: "Notion", icon: "/notion.svg" },
+  { id: "slack", name: "Slack", icon: "/slack.svg" },
+  { id: "google_drive", name: "Drive", icon: "/google-drive-2026.svg" },
 ];
 
 const ConnectorSelector: FC = () => {
@@ -920,7 +934,7 @@ const ConnectorSelector: FC = () => {
         }
         setActive(connected);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleConnect = async (id: string) => {
@@ -1029,15 +1043,29 @@ const ConnectorSelector: FC = () => {
   );
 };
 
-const ComposerAction: FC<{ onSend: () => void }> = ({ onSend }) => {
+const ComposerAction: FC<{ onSend: () => void; wordCount: number }> = ({ onSend, wordCount }) => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
       <div className="flex items-center gap-2">
         <ComposerAddAttachment />
         <ModelSelector />
-        <ConnectorSelector /> 
+        <ConnectorSelector />
       </div>
       <div className="flex items-center gap-1.5">
+        {wordCount > 0 && (
+          <span
+            className={cn(
+              "text-[11px] font-medium transition-colors select-none px-2 py-0.5 rounded-full border border-white/10",
+              wordCount >= 1000
+                ? "bg-red-500/20 text-red-400 font-semibold border-red-500/30"
+                : wordCount >= 850
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                  : "bg-white/5 text-white/40",
+            )}
+          >
+            {wordCount}/1000
+          </span>
+        )}
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>
           <AuiIf condition={(s) => s.composer.dictation == null}>
             <ComposerPrimitive.Dictate asChild>
@@ -1105,8 +1133,8 @@ const MessageError: FC = () => {
   const errorMsg: string = typeof rawError === "string"
     ? rawError
     : errorObj?.message
-    ? String(errorObj.message)
-    : String(rawError || "");
+      ? String(errorObj.message)
+      : String(rawError || "");
 
   if (errorMsg.startsWith("LIMIT_EXCEEDED:")) {
     const parts = errorMsg.split(":");
@@ -1451,7 +1479,7 @@ export const AssistantLayout: FC = () => {
   const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarState();
 
   return (
-    <div className="flex h-full w-full max-w-full overflow-x-hidden bg-[#121212]">
+    <div className="flex h-full w-full max-w-full overflow-x-hidden bg-background">
       <div className="hidden md:block h-full shrink-0">
         <Sidebar collapsed={sidebarCollapsed} />
       </div>
@@ -1477,13 +1505,13 @@ export const ActivityToolUI = makeAssistantToolUI({
     const labelText = typeof args.label === "string" ? args.label : String(args.label ?? "");
     const isRunning = status === "running";
     const isFailed = status === "failed";
-    
+
     return (
       <div className="flex items-center gap-3 mb-2 p-3 rounded-2xl bg-white/5 border border-white/10 w-fit fade-in animate-in">
         {isRunning ? (
           <DotMatrix state="connecting" className="size-4 shrink-0 text-blue-400" />
         ) : isFailed ? (
-           <SquareIcon className="size-4 shrink-0 text-red-400 fill-current" />
+          <SquareIcon className="size-4 shrink-0 text-red-400 fill-current" />
         ) : (
           <CheckIcon className="size-4 shrink-0 text-green-400" />
         )}

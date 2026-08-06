@@ -2,7 +2,7 @@
 
 import { AssistantRuntimeProvider, useLocalRuntime } from "@assistant-ui/react";
 import { createOrphicAdapter, orphicAttachmentAdapter, processThinkTags } from "@/lib/orphicAdapter";
-import { FC, ReactNode, useMemo, useEffect, useState } from "react";
+import { FC, ReactNode, useMemo, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getConversationMessages } from "@/lib/api";
 
@@ -60,7 +60,7 @@ const normalizeMessage = (message: any): any => {
   const role = message?.role ?? message?.type ?? "assistant";
 
   let text = "";
-  let reasoning = "";
+  let reasoning = typeof message?.reasoning === "string" ? message.reasoning : "";
   let attachments: any[] = Array.isArray(message?.attachments) ? [...message.attachments] : [];
 
   if (typeof message?.content === "string") {
@@ -68,14 +68,18 @@ const normalizeMessage = (message: any): any => {
   } else if (Array.isArray(message?.content)) {
     const parts = extractContentParts(message.content);
     text = parts.text;
-    reasoning = parts.reasoning;
+    if (parts.reasoning) {
+      reasoning = reasoning ? `${reasoning}\n${parts.reasoning}` : parts.reasoning;
+    }
     if (parts.attachments.length > 0) attachments.push(...parts.attachments);
   } else if (typeof message?.text === "string") {
     text = message.text;
   } else if (Array.isArray(message?.text)) {
     const parts = extractContentParts(message.text);
     text = parts.text;
-    reasoning = parts.reasoning;
+    if (parts.reasoning) {
+      reasoning = reasoning ? `${reasoning}\n${parts.reasoning}` : parts.reasoning;
+    }
     if (parts.attachments.length > 0) attachments.push(...parts.attachments);
   } else if (typeof message?.content === "object" && message?.content?.text) {
     text = typeof message.content.text === "string"
@@ -90,13 +94,13 @@ const normalizeMessage = (message: any): any => {
     // Parse individual fields from the system event string
     const eventTypeMatch = text.match(/\[Event:\s*([^\]]+)\]/i);
     const nameMatch = text.match(/Name:\s*([^|]+)/i);
-    const urlMatch = text.match(/URL:\s*(https?:\/\/[^\s|]+)/i);
+    const urlMatch = text.match(/URL:\s*([^\s|]+)/i) || text.match(/Path:\s*([^\s|]+)/i);
     const descMatch = text.match(/Description:\s*([\s\S]+?)(?:\s*$)/i);
 
     if (eventTypeMatch) {
       const eventType = eventTypeMatch[1]?.trim() || "";
       const fileName = nameMatch ? nameMatch[1]?.trim() : "file";
-      const fileUrl = urlMatch ? urlMatch[1]?.trim() : undefined;
+      let fileUrl = urlMatch ? urlMatch[1]?.trim() : undefined;
       const description = descMatch ? descMatch[1]?.trim() : "";
       const reParsed = processThinkTags(description);
 
@@ -116,7 +120,10 @@ const normalizeMessage = (message: any): any => {
             id: Math.random().toString(36).slice(2, 9),
             type: attType,
             name: fileName,
-            content: fileUrl ? [{ type: isImg ? "image" : "file", [isImg ? "image" : "file"]: fileUrl }] : [],
+            url: fileUrl,
+            content: fileUrl
+              ? [{ type: isImg ? "image" : "file", [isImg ? "image" : "file"]: fileUrl, url: fileUrl }]
+              : [],
             status: { type: "complete" as const },
           },
         ],
@@ -156,6 +163,17 @@ const normalizeMessage = (message: any): any => {
     text = thinkParsed.text;
   }
 
+  // Filter out internal conversation summary messages
+  const lowerText = text.toLowerCase();
+  if (
+    lowerText.includes("summary of conversation") ||
+    lowerText.includes("here is a summary of the conversation") ||
+    lowerText.includes("conversation summary") ||
+    (lowerText.includes("session intent") && lowerText.includes("summary"))
+  ) {
+    return null;
+  }
+
   if (!text && !reasoning && attachments.length === 0) return null;
 
   // Build content parts array preserving reasoning when present
@@ -177,15 +195,21 @@ const normalizeMessage = (message: any): any => {
 
 export const Assistant: FC<{ children: ReactNode; threadId: string }> = ({ children, threadId }) => {
   const [initialMessages, setInitialMessages] = useState<any[] | null>(threadId === "new" ? [] : null);
+  const prevThreadIdRef = useRef<string>(threadId);
 
   useEffect(() => {
+    const isTransitionFromNew = prevThreadIdRef.current === "new" && threadId !== "new";
+    prevThreadIdRef.current = threadId;
+
     if (threadId === "new") {
       setInitialMessages([]);
       return;
     }
 
-    // Reset to null to show loader and force remount of AssistantInner
-    setInitialMessages(null);
+    // Don't clear messages to show loader if seamlessly transitioning from brand new thread
+    if (!isTransitionFromNew) {
+      setInitialMessages(null);
+    }
 
     let isMounted = true;
     const fetchMessages = async () => {
@@ -205,11 +229,11 @@ export const Assistant: FC<{ children: ReactNode; threadId: string }> = ({ child
             setInitialMessages(formattedMessages);
           }
         } else {
-          if (isMounted) setInitialMessages([]);
+          if (isMounted && !isTransitionFromNew) setInitialMessages([]);
         }
       } catch (err) {
         console.error("Failed to load messages", err);
-        if (isMounted) setInitialMessages([]);
+        if (isMounted && !isTransitionFromNew) setInitialMessages([]);
       }
     };
 
@@ -226,7 +250,7 @@ export const Assistant: FC<{ children: ReactNode; threadId: string }> = ({ child
   }
 
   return (
-    <AssistantInner key={threadId} threadId={threadId} initialMessages={initialMessages}>
+    <AssistantInner key={threadId === "new" ? "new" : threadId} threadId={threadId} initialMessages={initialMessages}>
       {children}
     </AssistantInner>
   );
@@ -237,10 +261,12 @@ const AssistantInner: FC<{ children: ReactNode; threadId: string; initialMessage
 
   const adapter = useMemo(() => {
     return createOrphicAdapter(threadId, (newId) => {
-      // When a new thread is created, redirect to its unique URL
-      router.replace(`/chat/${newId}`);
+      // Update URL in browser address bar without forcing Next.js router unmount/flicker
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", `/chat/${newId}`);
+      }
     });
-  }, [threadId, router]);
+  }, [threadId]);
 
   const runtime = useLocalRuntime(adapter, {
     initialMessages,

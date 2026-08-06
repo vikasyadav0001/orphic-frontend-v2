@@ -7,4 +7,11 @@ export default defineConfig([
   { ignores: [".next/**", "node_modules/**", "out/**", ".vercel/**"] },
   { files: ["**/*.{js,mjs,cjs,jsx}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: globals.browser } },
   pluginReact.configs.flat.recommended,
+  {
+    settings: {
+      react: {
+        version: "detect",
+      },
+    },
+  },
 ]);

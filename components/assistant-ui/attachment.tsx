@@ -7,7 +7,6 @@ import {
   FileText,
   Loader2Icon,
   AlertCircleIcon,
-  CheckCircle2Icon,
   Clock3Icon,
 } from "lucide-react";
 import {
@@ -36,6 +35,7 @@ import {
 } from "@/components/ui/avatar";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
+import { useAuiState } from "@assistant-ui/react";
 
 const isImageAttachment = (attachment: Attachment | CompleteAttachment | PendingAttachment) =>
   attachment.type === "image";
@@ -65,8 +65,11 @@ const useObjectUrl = (file?: File) => {
 
 const getAttachmentSrc = (attachment: Attachment | CompleteAttachment | PendingAttachment) => {
   if (!isImageAttachment(attachment)) return undefined;
-  const imagePart = attachment.content?.find((part: any) => part.type === "image");
-  return (imagePart as any)?.image;
+  const imagePart = attachment.content?.find((part: any) => part.type === "image" || part.image || part.url);
+  if (imagePart) {
+    return (imagePart as any).image || (imagePart as any).url || (imagePart as any).file;
+  }
+  return (attachment as any).url || (attachment as any).image || (attachment as any).src;
 };
 
 const formatBytes = (bytes?: number) => {
@@ -133,67 +136,37 @@ const AttachmentThumb: FC<{ attachment: Attachment | CompleteAttachment | Pendin
 };
 
 const AttachmentStatusBadge: FC<{ attachment: Attachment | CompleteAttachment | PendingAttachment }> = ({ attachment }) => {
-  const badge = useMemo(() => {
-    if (!isPendingAttachment(attachment)) {
-      return {
-        icon: CheckCircle2Icon,
-        label: "Ready",
-        className: "bg-emerald-500/15 text-emerald-300",
-      };
-    }
+  if (!isPendingAttachment(attachment)) return null;
 
-    if (attachment.status.type === "running") {
-      return {
-        icon: Loader2Icon,
-        label: `${Math.max(0, Math.min(100, Math.round(attachment.status.progress * 100)))}%`,
-        className: "bg-blue-500/15 text-blue-300",
-        spin: true,
-      };
-    }
+  if (attachment.status.type === "running") {
+    const rawProgress = attachment.status.progress ?? 1;
+    const progress = Math.max(0, Math.min(100, Math.round(rawProgress * 100)));
+    if (progress >= 100) return null;
 
-    if (attachment.status.type === "requires-action") {
-      return {
-        icon: Clock3Icon,
-        label: "Queued",
-        className: "bg-amber-500/15 text-amber-200",
-      };
-    }
-
-    return {
-      icon: AlertCircleIcon,
-      label: "Failed",
-      className: "bg-red-500/15 text-red-300",
-    };
-  }, [attachment]);
-
-  const Icon = badge.icon;
-
-  return (
-    <div className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
-      <Icon className={cn("size-3", badge.spin && "animate-spin")} />
-      <span>{badge.label}</span>
-    </div>
-  );
-};
-
-const AttachmentMeta: FC<{ attachment: Attachment | CompleteAttachment | PendingAttachment }> = ({ attachment }) => {
-  const fileSize = formatBytes(attachment.file?.size);
-  const typeLabel =
-    attachment.type === "image"
-      ? "Image"
-      : attachment.type === "document"
-        ? "Document"
-        : "File";
-
-  return (
-    <div className="min-w-0 flex-1">
-      <p className="truncate text-xs font-medium text-white/90">{attachment.name}</p>
-      <div className="mt-1 flex items-center gap-2 text-[10px] text-white/45">
-        <span>{typeLabel}</span>
-        {fileSize ? <span>{fileSize}</span> : null}
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[1px] rounded-lg">
+        <Loader2Icon className="size-4 animate-spin text-white" />
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (attachment.status.type === "requires-action") {
+    return (
+      <div className="absolute bottom-1 right-1 flex size-4 items-center justify-center rounded-full bg-amber-500/80 text-white">
+        <Clock3Icon className="size-2.5" />
+      </div>
+    );
+  }
+
+  if (attachment.status.type === "incomplete") {
+    return (
+      <div className="absolute bottom-1 right-1 flex size-4 items-center justify-center rounded-full bg-red-500/80 text-white">
+        <AlertCircleIcon className="size-2.5" />
+      </div>
+    );
+  }
+
+  return null;
 };
 
 const AttachmentCard: FC<{
@@ -203,41 +176,31 @@ const AttachmentCard: FC<{
   const filePreviewSrc = useObjectUrl(attachment.file);
   const persistedSrc = getAttachmentSrc(attachment);
   const previewSrc = filePreviewSrc ?? persistedSrc;
-  const isImage = isImageAttachment(attachment);
 
   return (
-    <AttachmentPrimitive.Root
-      className={cn(
-        "relative",
-        isComposer ? "w-[220px] shrink-0" : "max-w-[260px]",
-      )}
-    >
+    <AttachmentPrimitive.Root className="relative shrink-0 my-0.5">
       <AttachmentPreviewDialog src={previewSrc}>
         <Tooltip>
           <TooltipTrigger
             render={
               <div
-                className={cn(
-                  "group flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2.5 transition-colors hover:bg-white/8",
-                  isComposer && "min-h-[76px]",
-                )}
+                className="group flex items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/5 p-1 transition-all hover:bg-white/10 hover:border-white/25"
                 role="button"
                 tabIndex={0}
                 aria-label={`${attachment.name} attachment`}
               />
             }
           >
-            <div className={cn("overflow-hidden rounded-xl bg-white/5", isImage ? "size-14" : "size-12")}>
+            <div className="relative size-12 overflow-hidden rounded-lg bg-white/5 flex items-center justify-center">
               <AttachmentThumb attachment={attachment} />
+              <AttachmentStatusBadge attachment={attachment} />
             </div>
-            <AttachmentMeta attachment={attachment} />
-            <AttachmentStatusBadge attachment={attachment} />
           </TooltipTrigger>
           <TooltipContent side="top">
             <div className="max-w-56">
-              <p className="truncate">{attachment.name}</p>
+              <p className="truncate text-xs font-medium">{attachment.name}</p>
               {isPendingAttachment(attachment) && attachment.status.type === "incomplete" && attachment.status.message ? (
-                <p className="mt-1 text-red-300">{attachment.status.message}</p>
+                <p className="mt-1 text-red-300 text-[10px]">{attachment.status.message}</p>
               ) : null}
             </div>
           </TooltipContent>
@@ -254,7 +217,7 @@ const AttachmentRemove: FC = () => {
       render={
         <TooltipIconButton
           tooltip="Remove file"
-          className="absolute end-1.5 top-1.5 size-4 rounded-full bg-white text-black opacity-100 shadow-sm hover:bg-white hover:[&_svg]:text-destructive"
+          className="absolute -top-1.5 -end-1.5 z-10 size-4.5 rounded-full bg-white text-black opacity-100 shadow-md hover:bg-white hover:[&_svg]:text-destructive cursor-pointer"
           side="top"
         />
       }
@@ -285,12 +248,15 @@ export const ComposerAttachments: FC = () => {
 };
 
 export const ComposerAddAttachment: FC = () => {
+  const attachmentCount = useAuiState((s) => s.composer.attachments.length);
+  if (attachmentCount >= 1) return null;
+
   return (
     <ComposerPrimitive.AddAttachment
-      multiple
+      multiple={false}
       render={
         <TooltipIconButton
-          tooltip="Add Attachment"
+          tooltip="Add Attachment (Single file max)"
           side="bottom"
           variant="ghost"
           size="icon"
