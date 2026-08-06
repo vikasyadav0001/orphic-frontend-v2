@@ -193,29 +193,22 @@ export const ThreadListItems: FC<{ className?: string; inert?: boolean; "aria-hi
           onClick={() => !isDeleting && setDeleteTarget(null)}
         >
           <div
-            className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-[#1e1e1e] p-5 shadow-2xl text-white fade-in animate-in zoom-in-95 duration-150"
+            className="relative w-full max-w-[260px] rounded-xl border border-white/10 bg-[#1e1e1e] p-4 shadow-2xl text-white fade-in animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 shrink-0">
-                <TrashIcon className="size-4" />
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 shrink-0">
+                <TrashIcon className="size-3.5" />
               </div>
-              <div>
-                <h3 className="font-semibold text-base text-white">Delete Chat Thread</h3>
-                <p className="text-xs text-white/50">This action cannot be undone.</p>
-              </div>
+              <h3 className="font-medium text-sm text-white truncate">Delete Chat?</h3>
             </div>
 
-            <p className="text-xs text-white/70 mb-5 leading-relaxed bg-white/5 p-2.5 rounded-lg border border-white/5 truncate">
-              Are you sure you want to delete <span className="font-medium text-white">"{deleteTarget.title}"</span>?
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
                 disabled={isDeleting}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50"
+                className="w-full py-1.5 rounded-lg text-xs font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-50 text-center"
               >
                 Cancel
               </button>
@@ -223,7 +216,7 @@ export const ThreadListItems: FC<{ className?: string; inert?: boolean; "aria-hi
                 type="button"
                 onClick={confirmDelete}
                 disabled={isDeleting}
-                className="flex items-center justify-center px-4 py-1.5 rounded-lg text-xs font-medium bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50 shadow-md shadow-red-500/20"
+                className="w-full flex items-center justify-center py-1.5 rounded-lg text-xs font-medium bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50 shadow-sm shadow-red-500/20 text-center"
               >
                 {isDeleting ? "Deleting..." : "Delete"}
               </button>
